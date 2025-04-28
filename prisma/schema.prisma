@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  username      String    @db.VarChar(100) @unique
+  password      String    @db.VarChar(255)
+  date_created  DateTime  @default(now())
+  articles      Articles[]
+  comments      Comments[]
+  article_likes ArticleLikes[]
+  comment_likes CommentLikes[]
+}
+
+model Articles {
+  id            Int       @id @default(autoincrement())
+  author        Users     @relation(fields: [authorId], references: [id]) 
+  authorId      Int
+  title         String
+  content       String
+  date_created  DateTime  @default(now())
+  total_likes   Int
+  likes         ArticleLikes[]
+  published     Boolean   @default(false)
+  comments      Comments[]
+}
+
+model ArticleLikes {
+  id            Int       @id @default(autoincrement())
+  article       Articles  @relation(fields: [articleId], references: [id])
+  articleId     Int
+  liker         Users     @relation(fields: [likerId], references: [id])
+  likerId       Int
+  liked         Boolean   @default(false)
+}
+
+model CommentLikes {
+  id            Int       @id @default(autoincrement())
+  comment       Comments  @relation(fields: [commentId], references: [id])
+  commentId     Int
+  liker         Users     @relation(fields: [likerId], references: [id])
+  likerId       Int
+  liked         Boolean   @default(false)
+}
+
+model Comments {
+  id            Int       @id @default(autoincrement())
+  commenter     Users     @relation(fields: [commenterId], references: [id]) 
+  commenterId   Int
+  article       Articles  @relation(fields: [articleId], references: [id])
+  articleId     Int
+  comment       String
+  date_created  DateTime  @default(now())
+  comment_likes CommentLikes[]
+}
