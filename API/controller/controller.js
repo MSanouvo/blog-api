@@ -85,17 +85,24 @@ function verifyToken(req, res, next){
     }
 }
 
-function getArticles(req, res){
-    const article = {
-        title: "This is a Title",
-        content: "Hello World",
-        author: 'Admin'
-    }
+async function getArticles(req, res){
+    const articles = await prisma.articles.findMany()
+    res.json(articles)
+}
+
+async function getArticlesById(req, res){
+    const id = req.params.id
+    const article = await prisma.articles.findMany({
+        where: {
+            id: Number(id)
+        }
+    })
     res.json(article)
 }
 
 async function addUser(req, res){
     //mock
+    //replace with req.body
     const user = {
         username: "Admin",
         password: "Admin",
@@ -124,6 +131,9 @@ const login = [
             email: "admin@admin.com"
         }
         jwt.sign({user}, 'secretkey', {expiresIn: '3000s' }, (err, token) =>{
+            //stores token in localStorage (not tested yet)
+            // const token = localStorage.getItem('jwt') to get token
+            // localStorage.setItem('jwt', token)
             res.json({
                 token
             })
@@ -135,27 +145,74 @@ const login = [
 
 const postArticle = [
     verifyToken,
-    function(req, res){
+    async function(req, res){
         console.log('token verified')
-        jwt.verify(req.token, 'secretkey', (err)=> {
+        // LATER LOOK INTO STANDARD FOR ASYNC/PROMISES AND JWT.VERIFY
+        jwt.verify(req.token, 'secretkey', (err, authData)=> {
             if(err){
                 res.sendStatus(403)
             } else {
-                //mock
-                res.json({
-                    message: 'Post Created'
-                })
+                const user = authData.user
+                console.log(req.body)
+                res.send(req.body)
+                addArticle(user, req.body)
             }
         })
     }
 ]
+//For adding new articles
+async function addArticle(user, data){
+    const newArticle = await prisma.articles.create({
+        data:{
+            title: data.title,
+            content: data.content,
+            author: {
+                connect: {
+                    username: user.username
+                }
+            }
+        }
+    })
+    console.log(newArticle)
+}
+
+const updateArticle = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                res.send(req.body)
+                updateArticleById(id, req.body)
+            }
+        })
+    }
+]
+
+//For updating articles
+async function updateArticleById(id, data) {
+    const article = await prisma.articles.update({
+        where: {
+            id: Number(id)
+        },
+        data: {
+            title: data.title,
+            content: data.content
+        }
+    })
+    console.log(article)
+}
 
 module.exports = {
     passport,
     getArticles,
     addUser,
     login,
-    postArticle
+    postArticle,
+    updateArticle,
+    getArticlesById
 }
 
 // const postSignUp = [

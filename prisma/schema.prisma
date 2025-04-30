@@ -30,10 +30,10 @@ model Articles {
   id            Int       @id @default(autoincrement())
   author        Users     @relation(fields: [authorId], references: [id]) 
   authorId      Int
-  title         String
-  content       String
+  title         String    @db.VarChar(255)
+  content       String 
   date_created  DateTime  @default(now())
-  total_likes   Int
+  total_likes   Int       @default(0)
   likes         ArticleLikes[]
   published     Boolean   @default(false)
   comments      Comments[]
@@ -65,5 +65,6 @@ model Comments {
   articleId     Int
   comment       String
   date_created  DateTime  @default(now())
+  total_likes   Int       @default(0)
   comment_likes CommentLikes[]
 }
