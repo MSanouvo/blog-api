@@ -46,6 +46,8 @@ model ArticleLikes {
   liker         Users     @relation(fields: [likerId], references: [id])
   likerId       Int
   liked         Boolean   @default(false)
+
+  @@unique([articleId ,likerId])
 }
 
 model CommentLikes {
@@ -55,6 +57,8 @@ model CommentLikes {
   liker         Users     @relation(fields: [likerId], references: [id])
   likerId       Int
   liked         Boolean   @default(false)
+
+  @@unique([commentId, likerId])
 }
 
 model Comments {

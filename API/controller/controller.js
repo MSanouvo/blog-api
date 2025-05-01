@@ -4,7 +4,7 @@ const passport = require("passport");
 const jwt = require('jsonwebtoken')
 const LocalStrategy = require("passport-local").Strategy;
 const { PrismaClient } = require("@prisma/client");
-const { post } = require("../routes/routes");
+const { post, connect } = require("../routes/routes");
 require("dotenv").config();
 
 const prisma = new PrismaClient()
@@ -97,10 +97,48 @@ async function getArticlesById(req, res){
             id: Number(id)
         }
     })
-    res.json(article)
+    const comments = await prisma.comments.findMany({
+        where:{
+            articleId: Number(id)
+        }
+    })
+    console.log(comments)
+    res.json({
+        article: article,
+        commnets: comments
+    })
 }
 
-async function addUser(req, res){
+//Add validation when frontend is up
+// const postSignUp = [
+// 	validateUser,
+// 	async function (req, res, next) {
+// 		const errors = validationResult(req);
+// 		if (!errors.isEmpty()) {
+// 			return res.status(400).render("sign-up", {
+// 				title: "Sign Up",
+// 				errors: errors.array(),
+// 			});
+// 		}
+// 		try {
+// 			console.log(req.body);
+// 			const hashedPassword = await bcrypt.hash(req.body.password, 10);
+// 			console.log(hashedPassword);
+// 			const user = await prisma.users.create({
+// 				data: {
+// 					username: req.body.username,
+// 					email: req.body.email,
+// 					password: hashedPassword,
+// 				},
+// 			});
+// 			console.log(user);
+// 			res.redirect("/");
+// 		} catch (err) {
+// 			return next(err);
+// 		}
+// 	},
+// ];
+async function addNewUser(req, res){
     //mock
     //replace with req.body
     const user = {
@@ -117,7 +155,6 @@ async function addUser(req, res){
     })
     console.log(newUser)
 }
-
 
 const login = [
     passport.authenticate('local'),
@@ -199,7 +236,144 @@ async function updateArticleById(id, data) {
         },
         data: {
             title: data.title,
-            content: data.content
+            content: data.content,
+            published: data.published
+        }
+    })
+    console.log(article)
+}
+
+
+// COMMENTS FUNCTIONS
+const postComment = [
+    verifyToken,
+    async function(req, res){
+        console.log('token verified')
+        // LATER LOOK INTO STANDARD FOR ASYNC/PROMISES AND JWT.VERIFY
+        jwt.verify(req.token, 'secretkey', (err, authData)=> {
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const user = authData.user
+                const id = req.params.id
+                console.log(req.body)
+                res.send(req.body)
+                addComment(user, id, req.body)
+            }
+        })
+    }
+]
+
+async function addComment(user, aritcle_id, data){
+    const newComment = await prisma.comments.create({
+        data: {
+            comment: data.content,
+            commenter: {
+                connect: {
+                    username: user.username
+                }
+            },
+            article: {
+                connect: {
+                    id: Number(aritcle_id)
+                }
+            }
+        }
+    })
+    console.log(newComment)
+}
+
+const updateComment = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                console.log(id)
+                res.send(req.body)
+                updateCommentById(id, req.body)
+            }
+        })
+    }
+]
+
+//For updating comments
+async function updateCommentById(id, data) {
+    const comments = await prisma.comments.update({
+        where: {
+            id: Number(id)
+        },
+        data: {
+            comment: data.content
+        }
+    })
+    console.log(comments)
+}
+
+// LIKING COMMENTS/ARTICLES
+// create like entry to the database
+// count total likes for a given comment/article
+// set the total_likes to that count
+
+const likeArticle = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                const user = authData.user
+                // console.log(id)
+                // console.log(user)
+                likeArticleById(id, user)
+                updateLikesForArticle(id)
+            }
+        })
+    }
+]
+
+//Need to make this unique to users can't repeatedly add likes to article
+async function likeArticleById(article_id, user) {
+    const liker = await prisma.articleLikes.create({
+        data:{
+            article: {
+                connect: {
+                    id: Number(article_id)
+                }
+            },
+            liker: {
+                connect: {
+                    username: user.username
+                }
+            },
+            liked: true
+        }
+    })
+    console.log(liker)
+}
+
+async function getLikesForArticle(article_id) {
+    const likes = await prisma.articleLikes.count({
+        where: {
+            liked: true,
+            articleId: Number(article_id)
+        }
+    })
+    return likes
+}
+
+async function updateLikesForArticle(article_id) {
+    const likesCount = await getLikesForArticle(article_id)
+    console.log(likesCount)
+    const article = await prisma.articles.update({
+        where:{
+            id: Number(article_id)
+        },
+        data: {
+            total_likes: likesCount
         }
     })
     console.log(article)
@@ -208,38 +382,12 @@ async function updateArticleById(id, data) {
 module.exports = {
     passport,
     getArticles,
-    addUser,
+    addNewUser,
     login,
     postArticle,
     updateArticle,
-    getArticlesById
+    getArticlesById,
+    postComment,
+    updateComment,
+    likeArticle
 }
-
-// const postSignUp = [
-// 	validateUser,
-// 	async function (req, res, next) {
-// 		const errors = validationResult(req);
-// 		if (!errors.isEmpty()) {
-// 			return res.status(400).render("sign-up", {
-// 				title: "Sign Up",
-// 				errors: errors.array(),
-// 			});
-// 		}
-// 		try {
-// 			console.log(req.body);
-// 			const hashedPassword = await bcrypt.hash(req.body.password, 10);
-// 			console.log(hashedPassword);
-// 			const user = await prisma.users.create({
-// 				data: {
-// 					username: req.body.username,
-// 					email: req.body.email,
-// 					password: hashedPassword,
-// 				},
-// 			});
-// 			console.log(user);
-// 			res.redirect("/");
-// 		} catch (err) {
-// 			return next(err);
-// 		}
-// 	},
-// ];
