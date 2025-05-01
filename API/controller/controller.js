@@ -105,7 +105,7 @@ async function getArticlesById(req, res){
     console.log(comments)
     res.json({
         article: article,
-        commnets: comments
+        comments: comments
     })
 }
 
@@ -197,7 +197,7 @@ const postArticle = [
         })
     }
 ]
-//For adding new articles
+
 async function addArticle(user, data){
     const newArticle = await prisma.articles.create({
         data:{
@@ -228,7 +228,6 @@ const updateArticle = [
     }
 ]
 
-//For updating articles
 async function updateArticleById(id, data) {
     const article = await prisma.articles.update({
         where: {
@@ -313,10 +312,8 @@ async function updateCommentById(id, data) {
 }
 
 // LIKING COMMENTS/ARTICLES
-// create like entry to the database
-// count total likes for a given comment/article
-// set the total_likes to that count
-
+// COME BACK WITH LOGIC TO UNLIKE CONTENT
+//      SET LIKED TO FALSE
 const likeArticle = [
     verifyToken,
     async function(req, res) {
@@ -335,7 +332,6 @@ const likeArticle = [
     }
 ]
 
-//Need to make this unique to users can't repeatedly add likes to article
 async function likeArticleById(article_id, user) {
     const liker = await prisma.articleLikes.create({
         data:{
@@ -379,6 +375,115 @@ async function updateLikesForArticle(article_id) {
     console.log(article)
 }
 
+const likeComment = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                const user = authData.user
+                console.log(id)
+                console.log(user)
+                likeCommentById(id, user)
+                updateLikesForComment(id)
+            }
+        })
+    }
+]
+
+async function likeCommentById(comment_id, user) {
+    const liker = await prisma.commentLikes.create({
+        data:{
+            comment: {
+                connect: {
+                    id: Number(comment_id)
+                }
+            },
+            liker: {
+                connect: {
+                    username: user.username
+                }
+            },
+            liked: true
+        }
+    })
+    console.log(liker)
+}
+
+async function getLikesForComment(comment_id) {
+    const likes = await prisma.commentLikes.count({
+        where: {
+            liked: true,
+            commentId: Number(comment_id)
+        }
+    })
+    return likes
+}
+
+async function updateLikesForComment(comment_id) {
+    const likesCount = await getLikesForComment(comment_id)
+    console.log(likesCount)
+    const comment = await prisma.comments.update({
+        where:{
+            id: Number(comment_id)
+        },
+        data: {
+            total_likes: likesCount
+        }
+    })
+    console.log(comment)
+}
+
+// DELETE FUNCTIONS
+const deleteArticle = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                console.log(id)
+                deleteArticleById(id)
+            }
+        })
+    }
+]
+
+async function deleteArticleById(article_id){
+    const deletedArticle = await prisma.articles.delete({
+        where: {
+            id: Number(article_id)
+        }
+    })
+}
+
+const deleteComment = [
+    verifyToken,
+    async function(req, res) {
+        jwt.verify(req.token, 'secretkey', (err, authData) =>{
+            if(err){
+                res.sendStatus(403)
+            } else {
+                const id = req.params.id
+                console.log(id)
+                deleteCommentById(id)
+            }
+        })
+    }
+]
+
+async function deleteCommentById(comment_id){
+    const deletedComment = await prisma.comments.delete({
+        where: {
+            id: Number(comment_id)
+        }
+    })
+}
+
+
 module.exports = {
     passport,
     getArticles,
@@ -389,5 +494,8 @@ module.exports = {
     getArticlesById,
     postComment,
     updateComment,
-    likeArticle
+    likeArticle,
+    likeComment,
+    deleteArticle,
+    deleteComment
 }

@@ -28,7 +28,7 @@ model Users {
 
 model Articles {
   id            Int       @id @default(autoincrement())
-  author        Users     @relation(fields: [authorId], references: [id]) 
+  author        Users     @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade) 
   authorId      Int
   title         String    @db.VarChar(255)
   content       String 
@@ -41,10 +41,10 @@ model Articles {
 
 model ArticleLikes {
   id            Int       @id @default(autoincrement())
-  article       Articles  @relation(fields: [articleId], references: [id])
+  article       Articles  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   articleId     Int
-  liker         Users     @relation(fields: [likerId], references: [id])
-  likerId       Int
+  liker         Users?     @relation(fields: [likerId], references: [id], onDelete: SetNull)
+  likerId       Int?
   liked         Boolean   @default(false)
 
   @@unique([articleId ,likerId])
@@ -52,10 +52,10 @@ model ArticleLikes {
 
 model CommentLikes {
   id            Int       @id @default(autoincrement())
-  comment       Comments  @relation(fields: [commentId], references: [id])
+  comment       Comments  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId     Int
-  liker         Users     @relation(fields: [likerId], references: [id])
-  likerId       Int
+  liker         Users?     @relation(fields: [likerId], references: [id], onDelete: SetNull)
+  likerId       Int?
   liked         Boolean   @default(false)
 
   @@unique([commentId, likerId])
@@ -63,9 +63,9 @@ model CommentLikes {
 
 model Comments {
   id            Int       @id @default(autoincrement())
-  commenter     Users     @relation(fields: [commenterId], references: [id]) 
-  commenterId   Int
-  article       Articles  @relation(fields: [articleId], references: [id])
+  commenter     Users?     @relation(fields: [commenterId], references: [id], onDelete: SetNull) 
+  commenterId   Int?
+  article       Articles  @relation(fields: [articleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   articleId     Int
   comment       String
   date_created  DateTime  @default(now())
