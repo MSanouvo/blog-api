@@ -1,4 +1,10 @@
 {
+  "name": "blog-api",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "start": "node API/app.js"
+  },
   "dependencies": {
     "@prisma/client": "^6.6.0",
     "bcryptjs": "^3.0.2",
