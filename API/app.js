@@ -14,7 +14,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }))
-
+app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(session({ secret: "secret", resave: false, saveUninitialized: false }))
 app.use(controller.passport.session())
