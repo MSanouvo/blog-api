@@ -4,11 +4,11 @@ const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const LocalStrategy = require("passport-local").Strategy;
 const { PrismaClient } = require("@prisma/client");
-const { post, connect } = require("../routes/routes");
 require("dotenv").config();
 
 const prisma = new PrismaClient();
 const lengthErr = "must be between 1 and 30 characters.";
+
 
 const validateUser = [
 	body("username")
@@ -86,29 +86,12 @@ function verifyToken(req, res, next) {
 
 async function getArticles(req, res) {
 	const articles = await prisma.articles.findMany({
-        where: {
-            published: true
-        }
-    });
+		where: {
+			published: true
+		}
+	});
 	res.json(articles);
 }
-
-// const getUserArticles = [
-// 	verifyToken,
-// 	async function (req, res) {
-// 		console.log("token verified");
-// 		jwt.verify(req.token, "secretkey", (err, authData) => {
-// 			if (err) {
-// 				res.sendStatus(403);
-// 			} else {
-// 				//NEED TO REFACTOR SO I CAN GET ARTICLES AND SEND JSON
-// 				const user = authData.user;
-// 				console.log(user);
-// 				getArticlesByUserId(user);
-// 			}
-// 		});
-// 	},
-// ];
 
 const getUserArticles = [
 	verifyToken,
@@ -117,13 +100,13 @@ const getUserArticles = [
 			console.log("token verified");
 			const token = req.token;
 			const authData = await jwt.verify(token, "secretkey");
-            console.log(authData)
-            const articles = await getArticlesByUserId(authData.user)
-            res.json({ articles: articles })
-		} catch(err) {
-            console.log(err)
-            res.sendStatus(403)
-        }
+			console.log(authData)
+			const articles = await getArticlesByUserId(authData.user)
+			res.json({ articles: articles })
+		} catch (err) {
+			console.log(err)
+			res.sendStatus(403)
+		}
 	},
 ];
 
@@ -133,9 +116,9 @@ async function getArticlesByUserId(user, res) {
 			authorId: user.id,
 		},
 	});
-    console.log(`articles from userId: ${user.id}`)
+	console.log(`articles from userId: ${user.id}`)
 	console.log(articles);
-    return articles
+	return articles
 }
 
 async function getArticlesById(req, res) {
@@ -144,17 +127,25 @@ async function getArticlesById(req, res) {
 		where: {
 			id: Number(id),
 		},
+		include:{
+			likes: true
+		}
 	});
 	const comments = await prisma.comments.findMany({
 		where: {
 			articleId: Number(id),
 		},
+		include: {
+			commenter: true,
+		}
 	});
+	console.log(comments)
 	res.json({
 		article: article,
 		comments: comments,
 	});
 }
+
 
 const signUp = [
 	validateUser,
@@ -195,7 +186,7 @@ const login = [
 		jwt.sign(
 			{ user },
 			"secretkey",
-			{ expiresIn: "3000s" },
+			// { expiresIn: "3000s" },
 			(err, token) => {
 				res.json({
 					token,
@@ -235,7 +226,7 @@ async function addArticle(user, data) {
 					username: user.username,
 				},
 			},
-            published: data.published
+			published: data.published
 		},
 	});
 	console.log(newArticle);
@@ -319,7 +310,7 @@ const updateComment = [
 			} else {
 				const id = req.params.id;
 				console.log(id);
-				res.send(req.body);
+				console.log(req.body)
 				updateCommentById(id, req.body);
 			}
 		});
@@ -351,7 +342,11 @@ const likeArticle = [
 				const user = authData.user;
 				// console.log(id)
 				// console.log(user)
-				likeArticleById(id, user);
+				try {
+					likeArticleById(id, user);
+				} catch (error) {
+					console.log(error)
+				}
 				updateLikesForArticle(id);
 			}
 		});
@@ -359,22 +354,27 @@ const likeArticle = [
 ];
 
 async function likeArticleById(article_id, user) {
-	const liker = await prisma.articleLikes.create({
-		data: {
-			article: {
-				connect: {
-					id: Number(article_id),
+	try {
+		const liker = await prisma.articleLikes.create({
+			data: {
+				article: {
+					connect: {
+						id: Number(article_id),
+					},
 				},
-			},
-			liker: {
-				connect: {
-					username: user.username,
+				liker: {
+					connect: {
+						username: user.username,
+					},
 				},
+				liked: true,
 			},
-			liked: true,
-		},
-	});
-	console.log(liker);
+		});
+		console.log(liker);
+	} catch (error) {
+		console.log(error)
+	}
+
 }
 
 async function getLikesForArticle(article_id) {
@@ -518,9 +518,9 @@ const deleteArticleLike = [
 			} else {
 				const user = authData.user.id;
 				const id = req.params.id;
-				console.log(id);
-				console.log(user);
+				console.log(`removing like for article ${id}`)
 				deleteArticleLikeById(id, user);
+				updateLikesForArticle(id);
 			}
 		});
 	},
@@ -535,6 +535,7 @@ async function deleteArticleLikeById(article_id, user) {
 			},
 		},
 	});
+	console.log(deletedArticle)
 }
 
 const deleteCommentLike = [
